@@ -39,7 +39,7 @@ public class CommonInterfaceTest {
         //加签
         param.put(InterfaceConstantUtil.SIGN, DigestUtils.md5Hex(infoContentStr));
         //加密
-        String encryptInfoContent = DESEncrptionUtil.encrypt(infoContentStr, "UTF-8", "paic1234", "p2p_rcslfx.jceks");
+        String encryptInfoContent = DESEncrptionUtil.encrypt(infoContentStr, "UTF-8", "paic1234", "my.jceks");
 
         param.put(InterfaceConstantUtil.INFO_CONTENT, encryptInfoContent);
 
