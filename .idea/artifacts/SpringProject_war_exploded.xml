@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="SpringProject:war exploded">
+    <output-path>$PROJECT_DIR$/classes/artifacts/SpringProject_war_exploded</output-path>
+    <root id="root">
+      <element id="dir-copy" path="$PROJECT_DIR$/dist/weblogic/spring/spring.war" />
+    </root>
+  </artifact>
+</component>

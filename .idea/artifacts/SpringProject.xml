@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-ear" name="SpringProject">
+    <output-path>$PROJECT_DIR$/classes/artifacts/SpringProject</output-path>
+    <root id="root">
+      <element id="dir-copy" path="$PROJECT_DIR$/dist/weblogic/spring" />
+    </root>
+  </artifact>
+</component>

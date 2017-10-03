@@ -1,0 +1,26 @@
+1. ear(Enterprise Application Archive)除了包含JAR、WAR以外，还必须包括EJB组件,部署描述符application.xml
+目录结构
+++++ear包或目录形式
+++++ear包或目录形式/META-INF/application.xml(ear应用配置描述符) 
+++++ear包或目录形式/EJB模块（.jar文件）
+++++ear包或目录形式/EJB模块/META-INF/ejb-jar.xml(ejb部署描述符)
+++++ear包或目录形式/EJB模块/META-INF/weblogic-ejb-jar.xml
+++++ear包或目录形式/Web模块（.war文件）
+++++ear包或目录形式/Web模块/WEB-INF/web.xml
+++++ear包或目录形式/APP-INF/lib
+++++ear包或目录形式/APP-INF/classes
+
+note1. application.xml(应用配置描述符), 包含了显示名称、模块元素(ejb,web,jar), web模块还提供了一个上下文根context-root来表示访问入口
+note2. ejb-jar.xml(部署描述符), 在EJB3.0中，也可以采用J2SE5.0引入的annoation注解，只不过ejb-jar.xml文件的内容会覆盖annoation
+note3. web模块必须包含部署描述符WEB-INF/web.xml
+note4. APP-INF可选，放置EJB和WEB模块共同使用到的一些classes和lib
+
+2. war(Web Archive file)包含Servlet、JSP页面、JSP标记库、JAR库文件、HTML/XML文档和其他公用资源文件，如图片、音频文件等,部署描述符web.xml
+目录结构
+++++公开目录 
+++++公开目录/WEB-INF/web.xml 文件，部署描述符（必选） 
+++++公开目录/WEB-INF/classes 目录，编译后的Java 类文件（可选） 
+++++公开目录/WEB-INF/lib 目录，Java 类库文件（*.jar）（可选） 
+
+note1. 公开目录存放所有可以被用户的访问的资源, 包括 .html, .jsp, .gif, .jpg, .css, .js, .swf等等。 
+note2. WEB-INF目录是一个专用区域, 容器不能把此目录中的内容提供给用户。这个目录下的文件只供容器使用,里面包含不应该由客户直接下载的资源

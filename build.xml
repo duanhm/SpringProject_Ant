@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="spring" basedir="." default="main">
+    <!-- =================================================================== -->
+    <!-- 变量设置 -->
+    <!-- =================================================================== -->
+    <property environment="env"/>
+    <property name="project.root" value="${basedir}"/>
+    <property file="build.properties"/>
+
+    <!-- 代码目录 -->
+    <property name="src.dir" value="${project.root}/src"/>
+    <property name="src.java.dir" value="${src.dir}/java"/>
+    <property name="src.test.dir" value="${src.dir}/test"/>
+    <property name="src.config.dir" value="${src.dir}/config"/>
+    <property name="src.jsp.dir" value="${src.dir}/webroot"/>
+
+    <!-- 临时编译目录 -->
+    <property name="build.dir" value="${project.root}/build"/>
+    <property name="build.lib.dir" value="${project.root}/lib"/>
+    <property name="build.classes.dir" value="${build.dir}/classes"/>
+    <property name="build.test.dir" value="${build.dir}/test"/>
+
+    <!-- 检查工具是否安装 -->
+    <available classname="net.sf.antcontrib.AntContribVersion" property="antcontrib.present"/>
+    <!--<fail unless="antcontrib.present" message="ANT扩展工具AntContrib没有安装,请把ant-contrib.jar拷贝到${env.ANT_HOME}/lib" />-->
+
+    <available file="weblogic.jar" property="weblogic.present" filepath="${lib.wls.dir}"/>
+    <fail unless="weblogic.present" message="Weblogic没有安装,或WL_HOME系统环境变量没有设置"/>
+
+
+    <!-- 定义Ant任务标签-weblogic的任务 -->
+    <taskdef name="wlserver" classname="weblogic.ant.taskdefs.management.WLServer" classpath="${weblogic.jar}"/>
+    <taskdef name="wlconfig" classname="weblogic.ant.taskdefs.management.WLConfig" classpath="${weblogic.jar}"/>
+    <taskdef name="wldeploy" classname="weblogic.ant.taskdefs.management.WLDeploy" classpath="${weblogic.jar}"/>
+
+
+    <!-- =================================================================== -->
+    <!-- 创建展开目录形式的EAR应用 -->
+    <!-- =================================================================== -->
+    <target name="info" description="显示项目构建信息">
+        <echo level="info">
+            +-------------------------您正在构建的项目信息-----------------------------+
+            +-------------------------------------------------------------------------+
+            项目名称|${project.name}
+            项目描述|${project.description}
+            项目版本|${project.revision}
+            项目联系人：段红梅
+            +-------------------------------------------------------------------------+
+        </echo>
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- 帮助信息 -->
+    <!-- =================================================================== -->
+    <target name="usage" depends="info">
+        <echo message="Application Build File"/>
+        <echo message="用法：ant -[target]"/>
+        <echo message="------------------------------------------------------"/>
+        <echo message="[target]"/>
+        <echo message="clean        --> 清空所有输出文件包括build编译和dist部署目录"/>
+        <echo message="compile      --> 编译Java文件"/>
+        <echo message="ear          --> 创建用于发布的EAR包文件（配置文件已提出）"/>
+        <echo message="exploded-ear --> 创建展开目录形式的EAR应用(开发模式)"/>
+        <echo message="exploded-war --> 创建展开目录形式的WAR应用(开发模式)"/>
+        <echo message="deployDir    --> Weblogic部署展开目录形式的EAR应用(开发模式)"/>
+        <echo message="deployEar    --> Weblogic部署EAR包"/>
+        <echo message="undeploy     --> Weblogic卸载部署的应用(目录形式或EAR包)"/>
+        <echo message="------------------------------------------------------"/>
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- 初始化，创建目录 -->
+    <!-- =================================================================== -->
+    <target name="init" description="创建目录" depends="usage">
+        <mkdir dir="${build.classes.dir}"/>
+        <mkdir dir="${build.test.dir}"/>
+    </target>
+
+    <!-- Java编译CLASSPATH -->
+    <path id="master-classpath">
+        <fileset dir="${build.lib.dir}"/>
+        <fileset file="${weblogic.jar}"/>
+    </path>
+
+    <!-- =================================================================== -->
+    <!-- 编译JAVA文件 -->
+    <!-- =================================================================== -->
+    <target name="compile" description="编译Java文件" depends="init">
+        <javac destdir="${build.classes.dir}" target="1.7" debug="true" encoding="UTF-8" deprecation="false"
+               optimize="false" failonerror="true">
+            <src path="${src.java.dir}"/>
+            <classpath refid="master-classpath"/>
+        </javac>
+        <!--编译测试代码 -->
+        <javac destdir="${build.test.dir}" target="1.7" debug="on" encoding="UTF-8" deprecation="false"
+               failonerror="true">
+            <src path="${src.test.dir}"/>
+            <classpath refid="master-classpath"/>
+            <classpath location="${build.classes.dir}"/>
+        </javac>
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- 清空所有输出文件包括build和部署目录 -->
+    <!-- =================================================================== -->
+    <target name="clean" description="清空所有输出文件包括build和部署目录">
+        <delete dir="${build.classes.dir}"/>
+        <delete dir="${build.test.dir}"/>
+        <delete dir="${deploy.exploded.dir}"/>
+        <delete file="${deploy.ear.dir}/${project.name}.ear"/>
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- 创建用于开发环境的EAR包文件 -->
+    <!-- =================================================================== -->
+    <target name="ear" depends="exploded-ear" description="创建用于开发环境的EAR包文件">
+        <!-- 打ejb jar包 -->
+        <jar jarfile="${deploy.ear.dir}/${project.name}-ejb.jar"
+             basedir="${deploy.exploded.dir}/${project.name}-ejb.jar">
+            <manifest>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Specification-Version" value="${project.revision}"/>
+            </manifest>
+        </jar>
+        <!-- 打war包 -->
+        <jar jarfile="${deploy.ear.dir}/${project.name}.war" basedir="${deploy.exploded.dir}/${project.name}.war">
+            <manifest>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Specification-Version" value="${project.revision}"/>
+            </manifest>
+        </jar>
+
+        <!-- 打ear包 -->
+        <jar jarfile="${deploy.ear.dir}/${project.name}.ear">
+            <fileset dir="${deploy.exploded.dir}">
+                <include name="APP-INF/**"/>
+                <include name="META-INF/application.xml"/>
+            </fileset>
+            <fileset dir="${deploy.ear.dir}">
+                <include name="${project.name}-ejb.jar"/>
+            </fileset>
+            <fileset dir="${deploy.ear.dir}">
+                <include name="${project.name}.war"/>
+            </fileset>
+        </jar>
+
+        <!-- 提取properties文件，它们需要单独配置到CLASSPATH -->
+        <copy todir="${deploy.ear.dir}">
+            <fileset dir="${src.config.dir}">
+                <include name="*.properties"/>
+            </fileset>
+        </copy>
+
+        <echo message="删除临时生成的ejb jar文件"/>
+        <delete>
+            <fileset dir="${deploy.ear.dir}">
+                <include name="${project.name}-ejb.jar"/>
+            </fileset>
+        </delete>
+        <echo message="删除临时生成的war文件"/>
+        <delete>
+            <fileset dir="${deploy.ear.dir}">
+                <include name="${project.name}.war"/>
+            </fileset>
+        </delete>
+
+        <echo level="info" message="删除临时生成的目录"/>
+        <delete dir="${deploy.exploded.dir}"/>
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- 创建展开目录形式的EAR应用 -->
+    <!-- =================================================================== -->
+    <target name="exploded-ear" depends="clean,compile" description="创建展开目录形式的EAR应用(开发模式)">
+        <mkdir dir="${deploy.exploded.dir}/APP-INF/lib"/>
+        <mkdir dir="${deploy.exploded.dir}/META-INF"/>
+        <mkdir dir="${deploy.exploded.dir}/${project.name}-ejb.jar/META-INF"/>
+        <mkdir dir="${deploy.exploded.dir}/${project.name}.war/WEB-INF/lib"/>
+        <mkdir dir="${deploy.exploded.dir}/${project.name}.war/WEB-INF/classes"/>
+
+        <!-- 创建META-INF -->
+        <copy todir="${deploy.exploded.dir}/META-INF">
+            <fileset dir="${src.config.dir}/app"/>
+        </copy>
+
+        <!-- 创建APP-INF 包含第三方包lib -->
+        <copy todir="${deploy.exploded.dir}/APP-INF/lib" preservelastmodified="true">
+            <fileset dir="${build.lib.dir}"/>
+        </copy>
+
+        <!-- 1.1  创建WAR的内容 -->
+        <copy todir="${deploy.exploded.dir}/${project.name}.war/WEB-INF">
+            <fileset dir="${src.config.dir}/web">
+                <exclude name="*.properties"/>
+            </fileset>
+        </copy>
+
+        <!-- 1.2 properties MessageBundle编码转换 -->
+        <native2ascii src="${src.config.dir}/web"
+                      dest="${deploy.exploded.dir}/${project.name}.war/WEB-INF/classes"
+                      includes="*.properties"/>
+
+        <!--1.3 lib-->
+        <copy todir="${deploy.exploded.dir}/${project.name}.war/WEB-INF/lib" preservelastmodified="true">
+            <fileset dir="${build.lib.dir}">
+                <include name="struts.jar"/>
+            </fileset>
+            <fileset dir="${build.lib.dir}">
+                <include name="jstl.jar"/>
+            </fileset>
+            <fileset dir="${build.lib.dir}">
+                <include name="standard.jar"/>
+            </fileset>
+        </copy>
+
+        <!-- 1.4 jsp -->
+        <copy todir="${deploy.exploded.dir}/${project.name}.war">
+            <fileset dir="${src.jsp.dir}/"/>
+        </copy>
+
+        <!-- 1.5 controller层的class -->
+        <copy todir="${deploy.exploded.dir}/${project.name}.war/WEB-INF/classes">
+            <fileset dir="${build.classes.dir}/">
+                <include name="**/web/**"/>
+            </fileset>
+        </copy>
+
+        <!-- 2.1 创建EJB JAR的内容 -->
+        <native2ascii src="${src.config.dir}/biz"
+                      dest="${deploy.exploded.dir}/${project.name}-ejb.jar"
+                      includes="*.properties"/>
+
+        <copy todir="${deploy.exploded.dir}/${project.name}-ejb.jar">
+            <fileset dir="${build.classes.dir}/">
+                <exclude name="**/web/**"/>
+            </fileset>
+            <fileset dir="${src.config.dir}/biz">
+                <exclude name="*.properties"/>
+            </fileset>
+        </copy>
+
+        <!-- 2.2 ejb的定义 -->
+        <copy todir="${deploy.exploded.dir}/${project.name}-ejb.jar/META-INF">
+            <fileset dir="${src.config.dir}/ejb"/>
+        </copy>
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- Weblogic部署,适用于本地展开目录编译快速部署,仅供开发人员使用 -->
+    <!-- =================================================================== -->
+    <target name="deployDir" depends="exploded-ear" description="创建并部署目录结构的EAR应用">
+        <echo message="targets不指定默认AdminServer"/>
+        <wldeploy user="${weblogic.user}" password="${weblogic.password}" action="deploy"
+                  adminurl="${weblogic.adminurl}" name="${weblogic.appname}"
+                  targets="${weblogic.server.name}" source="${deploy.exploded.dir}" debug="true" verbose="true"
+                  failonerror="true"/>
+    </target>
+
+    <target name="redeployDir" depends="exploded-ear" description="重新生成并部署应用">
+        <wldeploy user="${weblogic.user}" password="${weblogic.password}" action="redeploy"
+                  adminurl="${weblogic.adminurl}" name="${weblogic.appname}"
+                  debug="true" verbose="true" failonerror="true"/>
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- Weblogic部署,适用于本地ear包 -->
+    <!-- =================================================================== -->
+    <target name="deployEar" depends="ear" description="创建并部署EAR包应用">
+        <echo message="targets不指定默认AdminServer"/>
+        <wldeploy user="${weblogic.user}" password="${weblogic.password}" action="deploy"
+                  adminurl="${weblogic.adminurl}" name="${weblogic.appname}"
+                  targets="${weblogic.server.name}" source="${deploy.ear.dir}/${project.name}.ear" debug="true"
+                  verbose="true" failonerror="true"/>
+    </target>
+
+    <target name="redeployEar" depends="ear" description="重新生成并部署应用">
+        <wldeploy user="${weblogic.user}" password="${weblogic.password}" action="redeploy"
+                  adminurl="${weblogic.adminurl}" name="${weblogic.appname}"
+                  debug="true" verbose="true" failonerror="true"/>
+    </target>
+
+    <target name="undeploy" description="卸载整个应用">
+        <echo message="adminurl不指定默认是t3://localhost:7001"/>
+        <wldeploy user="${weblogic.user}" password="${weblogic.password}" action="undeploy"
+                  adminurl="${weblogic.adminurl}" name="${weblogic.appname}"/>
+    </target>
+
+
+    <!-- =================================================================== -->
+    <!-- 主构建任务, 缺省情况调用ear任务,开发人员可以在depends后添加依赖任务
+                这个任务主要用来实现编译,打包功能, 执行完后,可以生成应用的EAR,以及要发布
+                给其他项目使用的JAR-->
+    <!-- =================================================================== -->
+    <target name="main" depends="ear">
+        <echo message="${project.name}项目构建完成"/>
+    </target>
+
+    <target name="exploded-war" depends="clean,compile" description="创建展开目录形式的WAR应用(开发模式)">
+        <mkdir dir="${deploy.exploded.dir}/${project.name}.war/WEB-INF/lib"/>
+        <mkdir dir="${deploy.exploded.dir}/${project.name}.war/WEB-INF/classes"/>
+
+        <native2ascii src="${src.config.dir}/web"
+                      dest="${deploy.exploded.dir}/${project.name}.war/WEB-INF/classes"
+                      includes="*.properties"/>
+
+        <copy todir="${deploy.exploded.dir}/${project.name}.war/WEB-INF">
+            <fileset dir="${src.config.dir}/web">
+                <exclude name="*.properties"/>
+            </fileset>
+        </copy>
+
+        <copy todir="${deploy.exploded.dir}/${project.name}.war/WEB-INF/lib">
+            <fileset dir="${build.lib.dir}"/>
+        </copy>
+
+        <copy todir="${deploy.exploded.dir}/${project.name}.war/WEB-INF/classes">
+            <fileset dir="${build.classes.dir}">
+                <exclude name="**/ejb/**"/>
+            </fileset>
+            <fileset dir="${src.config.dir}/biz"/>
+        </copy>
+
+        <copy todir="${deploy.exploded.dir}/${project.name}.war">
+            <fileset dir="${src.jsp.dir}/"/>
+        </copy>
+    </target>
+
+    <!--jar包冲突扫描配置-->
+    <target name="scanJarConflict">
+        <java jar="lib/pafa-jarscan.jar" fork="true" failonerror="false">
+            <arg value="lib"/>
+            <arg value="pafa;org.springframework"/>
+            <jvmarg value="-Djarscan.md5Valid.Enabled=true"/>
+        </java>
+    </target>
+</project>
